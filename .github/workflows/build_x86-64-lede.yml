@@ -88,10 +88,30 @@ jobs:
           du -h --max-depth=1 ./build_dir
           du -h --max-depth=1 ./bin
       - name: 准备artifact
-        run: find ./bin/targets/ -type d -name "packages" | xargs rm -rf {}
+        run: |
+          mkdir -p ./artifact/firmware
+          mkdir -p ./artifact/package
+          mkdir -p ./artifact/buildinfo
+          rm -rf $(find ./bin/targets/ -type d -name "packages")
+          cp -rf $(find ./bin/targets/ -type f) ./artifact/firmware/
+          cp -rf $(find ./bin/packages/ -type f -name "*.ipk") ./artifact/package/
+          cp -rf $(find ./bin/targets/ -type f -name "*.buildinfo" -o -name "*.manifest") ./artifact/buildinfo/
 
-      - name: 上传artifact
-        uses: actions/upload-artifact@master
+      - name: 传送 buildinfo
+        uses: actions/upload-artifact@v2
         with:
-          name: x86_64_LEDE firmware
+          name: OpenWrt_buildinfo
+          path: ./artifact/buildinfo/
+
+      - name: 传送 package
+        uses: actions/upload-artifact@v2
+        with:
+          name: OpenWrt_package
+          path: ./artifact/package/
+
+      - name: 传送 firmware
+        uses: actions/upload-artifact@v2
+        with:
+          name: OpenWrt_firmware
           path: ./bin/targets/
+
