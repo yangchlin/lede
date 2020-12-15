@@ -9,13 +9,13 @@
 
 name: 编译x86_64固件
 on:
-  # push:
-    # branches: 
-     # - master
-  # schedule:
-  #   - cron: 0 20 * * *
-  # release:
-  #   types: [published]
+   push:
+     branches: 
+      - master
+   schedule:
+     - cron: 0 20 * * *
+   release:
+     types: [published]
 
 jobs:
 
