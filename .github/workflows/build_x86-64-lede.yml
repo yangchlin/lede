@@ -9,24 +9,26 @@
 
 name: 编译x86_64固件
 on:
-  push:
-    branches: 
-     - master
-  schedule:
-     - cron: 0 20 * * *
-  release:
-     types: [published]
+  # push:
+    # branches: 
+     # - master
+  # schedule:
+  #   - cron: 0 20 * * *
+  # release:
+  #   types: [published]
 
 jobs:
 
   build:
 
+    # 虚拟机系统:ubuntu-latest/Windows-latest/macOS-latest
     runs-on: ubuntu-latest
 
     steps:
 
       - name: 检测
-        uses: actions/checkout@master
+        # 引用外部Action
+        uses: actions/checkout@v2
         with:
           ref: master
 
@@ -38,20 +40,16 @@ jobs:
           sudo rm -rf /usr/share/dotnet /etc/mysql /etc/php /etc/apt/sources.list.d
           sudo -E apt-get -y purge azure-cli ghc* zulu* hhvm llvm* firefox google* dotnet* powershell openjdk* mysql* php*
           sudo -E apt-get update
-          sudo -E apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev patch unzip zlib1g-dev lib32gcc1 libc6-dev-i386 subversion flex uglifyjs git-core gcc-multilib p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler
+          sudo -E apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev curl patch python3 unzip zlib1g-dev lib32gcc1 libc6-dev-i386 subversion flex uglifyjs gcc-multilib g++-multilb p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler autlr3 gperf swig 
           sudo -E apt-get -y autoremove --purge
           sudo -E apt-get clean
+          sudo timedatectl set-timezone "Asia/Shanghai"
           
-          # 利用挂载在 /mnt/ 的 14G 额外空间:
-          # sudo mkdir -p -m 777 /mnt/openwrt/bin /mnt/openwrt/build_dir/host /mnt/openwrt/build_dir/hostpkg /mnt/openwrt/dl /mnt/openwrt/feeds /mnt/openwrt/staging_dir
-          # ln -s /mnt/openwrt/bin ./bin
-          # mkdir -p ./build_dir/host && ln -s /mnt/openwrt/build_dir/host ./build_dir/host
-          # mkdir -p ./build_dir/host && ln -s /mnt/openwrt/build_dir/hostpkg ./build_dir/hostpkg
-          # ln -s /mnt/openwrt/dl ./dl
-          # ln -s /mnt/openwrt/feeds ./feeds
-          # ln -s /mnt/openwrt/staging_dir ./staging_dir
-          
-          df -h
+      - name: 同步最新的源码
+        run: |
+          git remote add openwrt https://github.com/coolsnowwolf/lede.git
+          git pull openwrt master
+          git remote -v
           
       - name: 自定义插件主题
         run: |
@@ -60,7 +58,7 @@ jobs:
           cd openwrt-packages 
           git clone https://github.com/openwrt-develop/luci-theme-atmaterial.git
           git clone https://github.com/aboutboy/luci-theme-butongwifi.git
-          git clone https://github.com/tvheadend/tvheadend.git
+          git clone https://github.com/Leo-Jo-My/luci-theme-opentomcat
       - name: 更新feeds
         run: |
           ./scripts/feeds update -a
@@ -71,7 +69,7 @@ jobs:
          bash <(curl -fsSL https://raw.githubusercontent.com/yangchlin/lede/master/openwrt/diy86_64.sh)
          ./scripts/feeds install -a
           make defconfig
-      - name: 进行下载
+      - name: DL下载
         run: |
           make download -j8
           find ./dl/ -size -1024c -exec rm -f {} \;
@@ -89,29 +87,20 @@ jobs:
           du -h --max-depth=1 ./bin
       - name: 准备artifact
         run: |
-          mkdir -p ./artifact/firmware
-          mkdir -p ./artifact/package
-          mkdir -p ./artifact/buildinfo
-          rm -rf $(find ./bin/targets/ -type d -name "packages")
-          cp -rf $(find ./bin/targets/ -type f) ./artifact/firmware/
-          cp -rf $(find ./bin/packages/ -type f -name "*.ipk") ./artifact/package/
-          cp -rf $(find ./bin/targets/ -type f -name "*.buildinfo" -o -name "*.manifest") ./artifact/buildinfo/
+          mkdir -p ./new/firmware
+          mkdir -p ./new/package
+          cp -rf $(find ./bin/packages/ -type f -name "*.ipk") ./new/package
+          find bin/targets/ -name "*combined*img*" | xargs -i mv -f {} ./new/firmware
+          cd ./new/firmware
+          gzip *.img
 
-      - name: 传送 buildinfo
+      - name: 上传 Firmware
         uses: actions/upload-artifact@v2
         with:
-          name: OpenWrt_buildinfo
-          path: ./artifact/buildinfo/
-
-      - name: 传送 package
+          name: x86_64_LEDE firmware
+          path: ./new/firmware
+      - name: 上传 IPK
         uses: actions/upload-artifact@v2
         with:
-          name: OpenWrt_package
-          path: ./artifact/package/
-
-      - name: 传送 firmware
-        uses: actions/upload-artifact@v2
-        with:
-          name: OpenWrt_firmware
-          path: ./bin/targets/
-
+          name: x86_64_LEDE-Ipk
+          path: ./new/package
