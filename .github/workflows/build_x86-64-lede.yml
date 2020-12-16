@@ -47,11 +47,11 @@ jobs:
           sudo -E apt-get clean
           sudo timedatectl set-timezone "Asia/Shanghai"
           
-      - name: 同步最新的源码
-        run: |
-          git remote add openwrt https://github.com/coolsnowwolf/lede.git
-          git pull openwrt master
-          git remote -v
+      # - name: 同步最新的源码
+        # run: |
+         # git remote add openwrt https://github.com/coolsnowwolf/lede.git
+         # git pull openwrt master
+         # git remote -v
           
       - name: 自定义插件主题
         run: |
